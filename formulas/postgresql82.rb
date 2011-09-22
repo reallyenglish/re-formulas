@@ -39,13 +39,26 @@ class Postgresql82 < Formula
     ENV.append 'LDFLAGS', `uuid-config --ldflags`.strip
     ENV.append 'LIBS', `uuid-config --libs`.strip
 
-    if snow_leopard_64? and not ARGV.include? '--no-python'
+    if MacOS.prefer_64_bit? and not ARGV.include? '--no-python'
       args << "ARCHFLAGS='-arch x86_64'"
       check_python_arch
     end
 
     # Fails on Core Duo with O4 and O3
     ENV.O2 if Hardware.intel_family == :core
+
+    if MACOS_VERSION >= 10.7
+      # Workaround by Tatsuya. 
+      # Homebrew sets the following compile options to ENV, though, it breaks link
+      # on Lion. It seems that it is compiled without those options.
+      #
+      # CC: /usr/bin/llvm-gcc => /usr/llvm-gcc-4.2/bin/llvm-gcc-4.2
+      # CXX: /usr/bin/llvm-g++ => /usr/llvm-gcc-4.2/bin/llvm-g++-4.2
+      # LD: /usr/bin/llvm-gcc => /usr/llvm-gcc-4.2/bin/llvm-gcc-4.2
+      ENV['CC'] = ENV['CXX'] = ENV['LD'] = ""
+    end
+
+    p args.join(" ")
 
     system "./configure", *args
     system "make install"
@@ -110,7 +123,7 @@ And stop with:
     pg_ctl -D #{var}/postgres stop -s -m fast
 EOS
 
-    if snow_leopard_64? then
+    if MacOS.prefer_64_bit? then
       s << <<-EOS
 
 If you want to install the postgres gem, including ARCHFLAGS is recommended:
